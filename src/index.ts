@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import mime from 'mime-types';
@@ -11,8 +11,11 @@ import puppeteer from 'puppeteer';
 
 import { OpenRouterClient } from './openrouter';
 import { summarizeRecentChat } from './chatSummary';
+import { generateScienceBrief } from './scienceBrief';
+import { estimatePlateCalories, renderCalorieEstimate } from './plateCalorieEstimator';
 
 const downloadsDir = path.resolve(process.env.DOWNLOADS_DIR ?? path.join(process.cwd(), 'downloads'));
+const dataDir = path.resolve(process.env.DATA_DIR ?? path.join(process.cwd(), 'data'));
 const initialNotificationJid = process.env.INITIAL_NOTIFICATION_JID ?? '919654807428@c.us';
 
 const openRouterClient = new OpenRouterClient({
@@ -140,8 +143,20 @@ client.on('remote_session_saved', () => {
 
 client.on('message', async (message) => {
   const incoming = (message.body ?? '').trim();
+  const normalized = incoming.toLowerCase();
 
-  if (incoming.toLowerCase().startsWith('!ask')) {
+  if (message.hasMedia && normalized.startsWith('!calories')) {
+    await handleCalorieCommand(message, incoming.slice('!calories'.length).trim());
+    return;
+  }
+
+  if (normalized.startsWith('!science')) {
+    const topic = incoming.slice('!science'.length).trim();
+    await handleScienceCommand(message, topic);
+    return;
+  }
+
+  if (normalized.startsWith('!ask')) {
     const prompt = incoming.slice(4).trim();
     await handleAskCommand(message, prompt);
     return;
@@ -172,6 +187,29 @@ async function handleAskCommand(message: Message, prompt: string): Promise<void>
     console.error('Failed to generate OpenRouter response:', error);
     await message.react('⚠️');
     await message.reply('I could not reach OpenRouter right now. Please try again soon.');
+  }
+}
+
+async function handleScienceCommand(message: Message, topic: string): Promise<void> {
+  if (!topic) {
+    await message.reply('Usage: !science <topic>');
+    return;
+  }
+
+  if (!openRouterClient.isEnabled()) {
+    await message.reply('OpenRouter API key missing. Set OPENROUTER_API_KEY to enable science briefs.');
+    return;
+  }
+
+  try {
+    await message.react('🧪');
+    const brief = await generateScienceBrief({ topic, openRouterClient });
+    await client.sendMessage(message.from, brief);
+    await message.react('✅');
+  } catch (error) {
+    console.error('Failed to generate science brief:', error);
+    await message.react('⚠️');
+    await message.reply('I could not generate a science brief right now. Please try again soon.');
   }
 }
 
@@ -218,6 +256,73 @@ async function sendInitialMessages(jid: string, count: number): Promise<void> {
     } catch (error) {
       console.error(`❌ Failed to send initial message to ${jid}:`, error);
     }
+  }
+}
+
+async function handleCalorieCommand(message: Message, caption: string): Promise<void> {
+  if (!openRouterClient.isEnabled()) {
+    await message.reply('OpenRouter API key missing. Set OPENROUTER_API_KEY to enable calorie estimation.');
+    return;
+  }
+
+  try {
+    await message.react('🍽️');
+    const media = await message.downloadMedia();
+    if (!media || !media.mimetype?.startsWith('image/')) {
+      await message.reply('Attach a plate photo with the caption "!calories <items>".');
+      return;
+    }
+
+    const savedPath = await persistMedia(media, message);
+    const estimate = await estimatePlateCalories({
+      imagePath: savedPath,
+      base64Data: media.data,
+      mimeType: media.mimetype,
+      captionText: caption,
+      openRouterClient
+    });
+
+    if (!estimate) {
+      await message.react('⚠️');
+      await message.reply('Could not estimate calories reliably from this photo. Try a clearer image and caption.');
+      return;
+    }
+
+    await appendMealLog(message.from, {
+      ts: Date.now(),
+      caption,
+      estimate,
+      imagePath: savedPath
+    });
+
+    const rendered = renderCalorieEstimate(estimate);
+    await client.sendMessage(message.from, rendered);
+    await message.react('✅');
+  } catch (error) {
+    console.error('Failed to estimate calories:', error);
+    await message.react('⚠️');
+    await message.reply('I could not estimate calories right now. Please try again soon.');
+  }
+}
+
+async function appendMealLog(jid: string, entry: { ts: number; caption: string; estimate: unknown; imagePath: string }): Promise<void> {
+  try {
+    if (!existsSync(dataDir)) {
+      await mkdir(dataDir, { recursive: true });
+    }
+    const filePath = path.join(dataDir, `${sanitizeFilename(jid)}.json`);
+    let current: { meals: unknown[] } = { meals: [] };
+    try {
+      const buf = await readFile(filePath);
+      current = JSON.parse(buf.toString()) as { meals: unknown[] };
+      if (!current || typeof current !== 'object' || !Array.isArray((current as { meals?: unknown[] }).meals)) {
+        current = { meals: [] };
+      }
+    } catch {}
+    current.meals.push(entry);
+    await writeFile(filePath, JSON.stringify(current, null, 2));
+  } catch (error) {
+    console.error('Failed to append meal log:', error);
   }
 }
 

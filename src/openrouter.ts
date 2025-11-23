@@ -1,4 +1,6 @@
 import { fetch } from 'undici';
+import { readFile } from 'node:fs/promises';
+import mime from 'mime-types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -84,33 +86,44 @@ export class OpenRouterClient {
     });
   }
 
-  public async describeImage(params: { base64Data: string; mimeType: string; instruction?: string }): Promise<string> {
+  public async describeImage(params: { base64Data?: string; mimeType?: string; imagePath?: string; instruction?: string; system?: string; temperature?: number; maxTokens?: number }): Promise<string> {
     if (!this.visionModel) {
       throw new Error('OpenRouter vision model is not configured.');
     }
 
-    const { base64Data, mimeType, instruction } = params;
+    let { base64Data, mimeType } = params;
+    const { imagePath, instruction, system, temperature, maxTokens } = params;
+
+    if (imagePath) {
+      const buffer = await readFile(imagePath);
+      base64Data = buffer.toString('base64');
+      const lookedUp = mime.lookup(imagePath);
+      mimeType = typeof lookedUp === 'string' ? lookedUp : mimeType ?? 'image/jpeg';
+    }
+
+    if (!base64Data || !mimeType) {
+      throw new Error('Image data and mimeType are required to describe an image.');
+    }
+
     const imageUrl = `data:${mimeType};base64,${base64Data}`;
+
+    const messages: ChatMessage[] = [];
+    if (system) {
+      messages.push({ role: 'system', content: system });
+    }
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'input_text', text: instruction ?? 'Describe the contents of this WhatsApp image in one or two concise sentences.' },
+        { type: 'input_image', image_url: { url: imageUrl } }
+      ]
+    });
 
     return this.requestCompletion({
       model: this.visionModel,
-      temperature: 0.2,
-      max_tokens: 300,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text: instruction ?? 'Describe the contents of this WhatsApp image in one or two concise sentences.'
-            },
-            {
-              type: 'input_image',
-              image_url: { url: imageUrl }
-            }
-          ]
-        }
-      ]
+      temperature: typeof temperature === 'number' ? temperature : 0.2,
+      max_tokens: typeof maxTokens === 'number' ? maxTokens : 300,
+      messages
     });
   }
 

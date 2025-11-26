@@ -32,7 +32,11 @@ const MOCK_CLIENTS: Client[] = [
     status: "active",
     lastActive: "2 hours ago",
     program: "Weight Loss & Toning",
-    avatar: "https://i.pravatar.cc/150?u=sarah"
+    avatar: "https://i.pravatar.cc/150?u=sarah",
+    healthScore: 88,
+    mealAdherence: 92,
+    checkIns: 7,
+    weightTrend: "down"
   },
   {
     id: "2",
@@ -40,7 +44,11 @@ const MOCK_CLIENTS: Client[] = [
     status: "active",
     lastActive: "5 mins ago",
     program: "Hypertrophy Basics",
-    avatar: "https://i.pravatar.cc/150?u=mike"
+    avatar: "https://i.pravatar.cc/150?u=mike",
+    healthScore: 75,
+    mealAdherence: 65,
+    checkIns: 4,
+    weightTrend: "up"
   },
   {
     id: "3",
@@ -48,7 +56,11 @@ const MOCK_CLIENTS: Client[] = [
     status: "pending",
     lastActive: "1 day ago",
     program: "Post-Injury Recovery",
-    avatar: "https://i.pravatar.cc/150?u=emma"
+    avatar: "https://i.pravatar.cc/150?u=emma",
+    healthScore: 60,
+    mealAdherence: 40,
+    checkIns: 2,
+    weightTrend: "stable"
   },
   {
     id: "4",
@@ -56,7 +68,11 @@ const MOCK_CLIENTS: Client[] = [
     status: "inactive",
     lastActive: "2 weeks ago",
     program: "Marathon Prep",
-    avatar: "https://i.pravatar.cc/150?u=james"
+    avatar: "https://i.pravatar.cc/150?u=james",
+    healthScore: 45,
+    mealAdherence: 20,
+    checkIns: 0,
+    weightTrend: "stable"
   }
 ]
 
@@ -70,8 +86,8 @@ export default function AgentDashboard() {
         <div className="max-w-6xl mx-auto space-y-8">
           <header className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Client Management</h1>
-              <p className="text-slate-500">Select a client to configure their personal AI agent</p>
+              <h1 className="text-3xl font-bold text-slate-900">FalseGrip Studio Dashboard</h1>
+              <p className="text-slate-500">Manage client programs and AI configurations</p>
             </div>
             <Button>
               <Plus className="mr-2 h-4 w-4" />

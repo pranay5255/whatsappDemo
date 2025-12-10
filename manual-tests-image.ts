@@ -5,6 +5,7 @@
  * using vision models and OpenRouter client.
  */
 
+import 'dotenv/config';
 import { OpenRouterClient } from './src/openrouter';
 import { estimatePlateCalories, renderCalorieEstimate, CalorieEstimate } from './src/plateCalorieEstimator';
 
@@ -47,8 +48,8 @@ const tryParseEstimate = (text: string): CalorieEstimate | undefined => {
 };
 
 // Test Configuration - USER INPUT REQUIRED
-const TEST_API_KEY = process.env.OPENROUTER_API_KEY || 'your-api-key-here';
-const TEST_IMAGE_PATH = './test-images/meal.jpg'; // Replace with actual test image path
+const TEST_API_KEY = process.env.OPENROUTER_API_KEY;
+const TEST_IMAGE_PATH = 'downloads/photo_6136538011856997208_y.jpg'; // Updated path
 const TEST_BASE64_IMAGE = 'data:image/jpeg;base64,...'; // Replace with actual base64 image data
 
 // Initialize OpenRouter Client

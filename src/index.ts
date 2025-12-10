@@ -268,16 +268,31 @@ async function sendInitialMessages(jid: string, count: number): Promise<void> {
     return;
   }
 
-  const prefix = 'FitBOT Initialised - Chat Summary module enabled';
+  const modulesMessage = `*🤖 FitBOT Initialised!*
+
+Available modules:
+• *Calorie Estimation*: Send an image with caption "!calories <food items>" to estimate calories
+• *Science Brief*: Type "!science <topic>" for a scientific explanation
+• *Chat Summary*: Type "!summary" to get a summary of recent messages
+• *Q&A Assistant*: Type "!ask <your question>" for AI-powered answers
+• *Image Captioning*: Send any image to get automatic AI descriptions
+
+*Examples:*
+• Send a photo of food with "!calories rice, chicken, vegetables"
+• Try "!science quantum physics"
+• Type "!summary" after some conversation
+• Ask "!ask what is machine learning?"
+• Just send any image for automatic captioning`;
+
   const payloads = Array.from({ length: count }, (_, index) => {
     const ordinal = index + 1;
-    return `${prefix}. Test message ${ordinal}.`;
+    return index === 0 ? modulesMessage : `Test message ${ordinal}.`;
   });
 
   for (const payload of payloads) {
     try {
       await client.sendMessage(jid, payload);
-      console.log(`📨 Sent initial message to ${jid}: "${payload}"`);
+      console.log(`📨 Sent initial message to ${jid}: "${payload.slice(0, 100)}..."`);
     } catch (error) {
       console.error(`❌ Failed to send initial message to ${jid}:`, error);
     }

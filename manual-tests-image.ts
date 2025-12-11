@@ -6,8 +6,15 @@
  */
 
 import 'dotenv/config';
+import { promises as fs } from 'node:fs';
 import { OpenRouterClient } from './src/openrouter';
 import { estimatePlateCalories, renderCalorieEstimate, CalorieEstimate } from './src/plateCalorieEstimator';
+
+const encodeImageToBase64 = async (imagePath: string): Promise<string> => {
+  const imageBuffer = await fs.readFile(imagePath);
+  const base64Image = imageBuffer.toString('base64');
+  return `data:image/jpeg;base64,${base64Image}`;
+};
 
 /**
  * Local implementation of tryParseEstimate for testing purposes
@@ -49,15 +56,32 @@ const tryParseEstimate = (text: string): CalorieEstimate | undefined => {
 
 // Test Configuration - USER INPUT REQUIRED
 const TEST_API_KEY = process.env.OPENROUTER_API_KEY;
+const TEXT_MODEL = process.env.OPENROUTER_TEXT_MODEL;
+const VISION_MODEL = process.env.OPENROUTER_VISION_MODEL ?? TEXT_MODEL;
 const TEST_IMAGE_PATH = 'downloads/photo_6136538011856997208_y.jpg'; // Updated path
-const TEST_BASE64_IMAGE = 'data:image/jpeg;base64,...'; // Replace with actual base64 image data
 
 // Initialize OpenRouter Client
 const openRouterClient = new OpenRouterClient({
   apiKey: TEST_API_KEY,
-  visionModel: 'mistralai/mistral-nemo',
-  textModel: 'allenai/olmo-3-32b-think'
+  textModel: TEXT_MODEL,
+  visionModel: VISION_MODEL,
+  referer: process.env.OPENROUTER_REFERER,
+  appTitle: process.env.OPENROUTER_APP_TITLE ?? 'WhatsApp Demo Bot'
 });
+
+const ensureOpenRouterReady = (): boolean => {
+  if (!openRouterClient.isEnabled()) {
+    console.log('OpenRouter client not enabled - skipping API tests');
+    return false;
+  }
+
+  if (!TEXT_MODEL || !VISION_MODEL) {
+    console.log('OpenRouter models not configured (set OPENROUTER_TEXT_MODEL and OPENROUTER_VISION_MODEL) - skipping API tests');
+    return false;
+  }
+
+  return true;
+};
 
 /**
  * Test 1: Estimate Plate Calories with Image Path
@@ -65,10 +89,7 @@ const openRouterClient = new OpenRouterClient({
 async function testEstimateWithImagePath() {
   console.log('=== Test 1: Estimate with Image Path ===');
 
-  if (!openRouterClient.isEnabled()) {
-    console.log('OpenRouter client not enabled - skipping API tests');
-    return;
-  }
+  if (!ensureOpenRouterReady()) return;
 
   try {
     const result = await estimatePlateCalories({
@@ -92,14 +113,12 @@ async function testEstimateWithImagePath() {
 async function testEstimateWithBase64() {
   console.log('=== Test 2: Estimate with Base64 Data ===');
 
-  if (!openRouterClient.isEnabled()) {
-    console.log('OpenRouter client not enabled - skipping API tests');
-    return;
-  }
+  if (!ensureOpenRouterReady()) return;
 
   try {
+    const base64Image = await encodeImageToBase64(TEST_IMAGE_PATH);
     const result = await estimatePlateCalories({
-      base64Data: TEST_BASE64_IMAGE,
+      base64Data: base64Image,
       mimeType: 'image/jpeg',
       captionText: 'A healthy plate with salmon, quinoa, and mixed greens',
       openRouterClient
@@ -120,10 +139,7 @@ async function testEstimateWithBase64() {
 async function testImageEdgeCases() {
   console.log('=== Test 3: Image Edge Cases ===');
 
-  if (!openRouterClient.isEnabled()) {
-    console.log('OpenRouter client not enabled - skipping API tests');
-    return;
-  }
+  if (!ensureOpenRouterReady()) return;
 
   // Test with no image data
   try {
@@ -158,10 +174,7 @@ async function testImageEdgeCases() {
 async function testImagePerformance() {
   console.log('=== Test 4: Image Performance and Validation ===');
 
-  if (!openRouterClient.isEnabled()) {
-    console.log('OpenRouter client not enabled - skipping performance tests');
-    return;
-  }
+  if (!ensureOpenRouterReady()) return;
 
   const startTime = Date.now();
 

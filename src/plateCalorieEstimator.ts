@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import mime from 'mime-types';
 import { OpenRouterClient } from './openrouter';
+import { CALORIE_PROMPT_TEMPLATE, CALORIE_SYSTEM_PROMPT } from './modulePrompt';
 
 export interface CalorieEstimate {
   kcal_low: number;
@@ -13,15 +14,7 @@ export interface CalorieEstimate {
 
 export const buildCaloriePrompt = (caption: string): string => {
   const c = caption.trim();
-  return [
-    'Analyze the food on the plate and estimate realistic calories and macros.',
-    'Infer portion sizes from the image and the caption context.',
-    'Use ranges, not single numbers.',
-    'Explicitly label uncertainty in notes.',
-    'Output only JSON with keys { kcal_low, kcal_high, protein_g, carbs_g, fat_g, notes }.',
-    'Do not include any text outside the JSON object.',
-    c ? `Caption: ${c}` : ''
-  ].filter(Boolean).join('\n');
+  return CALORIE_PROMPT_TEMPLATE.replace('{{CAPTION_LINE}}', c ? `Caption: ${c}` : '');
 };
 
 const coerceNumber = (value: unknown): number => {
@@ -106,8 +99,13 @@ export interface EstimatePlateCaloriesParams {
 export const estimatePlateCalories = async (params: EstimatePlateCaloriesParams): Promise<CalorieEstimate | undefined> => {
   const { imagePath, base64Data, mimeType, captionText, openRouterClient } = params;
   const instruction = buildCaloriePrompt(captionText);
-  const system = 'You are a nutrition assistant. Output only JSON.';
   const imageUrl = await resolveImageDataUrl({ imagePath, base64Data, mimeType });
-  const raw = await openRouterClient.describeImage({ imageUrl, instruction, system, maxTokens: 600, temperature: 0.1 });
+  const raw = await openRouterClient.describeImage({
+    imageUrl,
+    instruction,
+    system: CALORIE_SYSTEM_PROMPT,
+    maxTokens: 600,
+    temperature: 0.1
+  });
   return tryParseEstimate(raw);
 };

@@ -1,6 +1,7 @@
 import type { Client, Message } from 'whatsapp-web.js';
 
 import type { OpenRouterClient } from './openrouter';
+import { SUMMARY_PROMPT_TEMPLATE, SUMMARY_SYSTEM_PROMPT } from './modulePrompt';
 
 interface SummarizeChatOptions {
   client: Client;
@@ -42,7 +43,7 @@ export const summarizeRecentChat = async ({
 
     const transcript = buildTranscript(recentMessages);
     const prompt = buildSummaryPrompt(transcript);
-    const summary = await openRouterClient.generateText(prompt, 'You are an expert WhatsApp assistant that writes concise daily summaries.');
+    const summary = await openRouterClient.generateText(prompt, SUMMARY_SYSTEM_PROMPT);
 
     await client.sendMessage(
       jid,
@@ -94,14 +95,5 @@ const resolveMessageBody = (message: Message): string => {
 const sanitizeWhitespace = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
 const buildSummaryPrompt = (transcript: string): string => {
-  return [
-    'You are helping summarize a WhatsApp conversation from the last 24 hours.',
-    'Provide:',
-    '1. A concise overview of what was discussed.',
-    '2. Key action items or follow-ups with owners if possible.',
-    '3. Outstanding questions.',
-    '',
-    'Conversation transcript:',
-    transcript,
-  ].join('\n');
+  return SUMMARY_PROMPT_TEMPLATE.replace('{{TRANSCRIPT}}', transcript);
 };

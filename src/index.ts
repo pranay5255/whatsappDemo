@@ -14,10 +14,12 @@ import { summarizeRecentChat } from './chatSummary';
 import { generateScienceBrief } from './scienceBrief';
 import { estimatePlateCalories, renderCalorieEstimate } from './plateCalorieEstimator';
 import { generateQnAResponse } from './qnaTemplate';
+import { COMMANDS } from './modulePrompt';
 
 const downloadsDir = path.resolve(process.env.DOWNLOADS_DIR ?? path.join(process.cwd(), 'downloads'));
 const dataDir = path.resolve(process.env.DATA_DIR ?? path.join(process.cwd(), 'data'));
 const initialNotificationJid = process.env.INITIAL_NOTIFICATION_JID ?? '919654807428@c.us';
+const { calories: CALORIES_CMD, science: SCIENCE_CMD, summary: SUMMARY_CMD, qna: QNA_CMD } = COMMANDS;
 
 const openRouterClient = new OpenRouterClient({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -141,24 +143,24 @@ client.on('message', async (message) => {
   const incoming = (message.body ?? '').trim();
   const normalized = incoming.toLowerCase();
 
-  if (message.hasMedia && normalized.startsWith('!calories')) {
-    await handleCalorieCommand(message, incoming.slice('!calories'.length).trim());
+  if (message.hasMedia && normalized.startsWith(CALORIES_CMD)) {
+    await handleCalorieCommand(message, incoming.slice(CALORIES_CMD.length).trim());
     return;
   }
 
-  if (normalized.startsWith('!science')) {
-    const topic = incoming.slice('!science'.length).trim();
+  if (normalized.startsWith(SCIENCE_CMD)) {
+    const topic = incoming.slice(SCIENCE_CMD.length).trim();
     await handleScienceCommand(message, topic);
     return;
   }
 
-  if (normalized.startsWith('!summary')) {
+  if (normalized.startsWith(SUMMARY_CMD)) {
     await handleSummaryCommand(message);
     return;
   }
 
-  if (normalized.startsWith('!ask')) {
-    const prompt = incoming.slice('!ask'.length).trim();
+  if (normalized.startsWith(QNA_CMD)) {
+    const prompt = incoming.slice(QNA_CMD.length).trim();
     await handleAskCommand(message, prompt);
     return;
   }
@@ -170,7 +172,7 @@ client.on('message', async (message) => {
 
 async function handleAskCommand(message: Message, prompt: string): Promise<void> {
   if (!prompt) {
-    await message.reply('Usage: !ask <your question>');
+    await message.reply(`Usage: ${QNA_CMD} <your question>`);
     return;
   }
 
@@ -217,7 +219,7 @@ async function handleSummaryCommand(message: Message): Promise<void> {
 
 async function handleScienceCommand(message: Message, topic: string): Promise<void> {
   if (!topic) {
-    await message.reply('Usage: !science <topic>');
+    await message.reply(`Usage: ${SCIENCE_CMD} <topic>`);
     return;
   }
 
@@ -271,17 +273,17 @@ async function sendInitialMessages(jid: string, count: number): Promise<void> {
   const modulesMessage = `*🤖 FitBOT Initialised!*
 
 Available modules:
-• *Calorie Estimation*: Send an image with caption "!calories <food items>" to estimate calories
-• *Science Brief*: Type "!science <topic>" for a scientific explanation
-• *Chat Summary*: Type "!summary" to get a summary of recent messages
-• *Q&A Assistant*: Type "!ask <your question>" for AI-powered answers
+• *Calorie Estimation*: Send an image with caption "${CALORIES_CMD} <food items>" to estimate calories
+• *Science Brief*: Type "${SCIENCE_CMD} <topic>" for a scientific explanation
+• *Chat Summary*: Type "${SUMMARY_CMD}" to get a summary of recent messages
+• *Q&A Assistant*: Type "${QNA_CMD} <your question>" for AI-powered answers
 • *Image Captioning*: Send any image to get automatic AI descriptions
 
 *Examples:*
-• Send a photo of food with "!calories rice, chicken, vegetables"
-• Try "!science quantum physics"
-• Type "!summary" after some conversation
-• Ask "!ask what is machine learning?"
+• Send a photo of food with "${CALORIES_CMD} rice, chicken, vegetables"
+• Try "${SCIENCE_CMD} quantum physics"
+• Type "${SUMMARY_CMD}" after some conversation
+• Ask "${QNA_CMD} what is machine learning?"
 • Just send any image for automatic captioning`;
 
   const payloads = Array.from({ length: count }, (_, index) => {
@@ -309,7 +311,7 @@ async function handleCalorieCommand(message: Message, caption: string): Promise<
     await message.react('🍽️');
     const media = await message.downloadMedia();
     if (!media || !media.mimetype?.startsWith('image/')) {
-      await message.reply('Attach a plate photo with the caption "!calories <items>".');
+      await message.reply(`Attach a plate photo with the caption "${CALORIES_CMD} <items>".`);
       return;
     }
 
@@ -468,7 +470,7 @@ async function bootstrap(): Promise<void> {
     console.log(`📁 Downloads directory: ${downloadsDir}`);
 
     if (!openRouterClient.isEnabled()) {
-      console.warn('⚠️  OpenRouter API key not detected. !ask command and captions will be disabled.');
+      console.warn(`⚠️  OpenRouter API key not detected. ${QNA_CMD} command and captions will be disabled.`);
     } else {
       console.log('✅ OpenRouter client enabled');
     }

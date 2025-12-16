@@ -9,12 +9,12 @@ type Role = 'system' | 'user' | 'assistant';
 type ContentPart = TextPart | ImagePart;
 
 interface TextPart {
-  type: 'input_text';
+  type: 'text';
   text: string;
 }
 
 interface ImagePart {
-  type: 'input_image';
+  type: 'image_url';
   image_url: {
     url: string;
   };
@@ -117,7 +117,7 @@ export class OpenRouterClient {
       messages.push({
         role: 'user',
         content: [
-          { type: 'input_text', text: userInstruction },
+          { type: 'text', text: userInstruction },
           imagePart
         ]
       });
@@ -229,7 +229,7 @@ export class OpenRouterClient {
     let { base64Data, mimeType } = params;
 
     if (imageUrl) {
-      return { type: 'input_image', image_url: { url: imageUrl } };
+      return { type: 'image_url', image_url: { url: imageUrl } };
     }
 
     if (imagePath) {
@@ -244,7 +244,8 @@ export class OpenRouterClient {
     }
 
     const resolvedMime = mimeType ?? 'image/jpeg';
-    const dataUrl = `data:${resolvedMime};base64,${base64Data}`;
-    return { type: 'input_image', image_url: { url: dataUrl } };
+    const isAlreadyDataUrl = base64Data.startsWith('data:');
+    const dataUrl = isAlreadyDataUrl ? base64Data : `data:${resolvedMime};base64,${base64Data}`;
+    return { type: 'image_url', image_url: { url: dataUrl } };
   }
 }

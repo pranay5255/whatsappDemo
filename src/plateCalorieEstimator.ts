@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import mime from 'mime-types';
 import { OpenRouterClient } from './openrouter';
 
 export interface CalorieEstimate {
@@ -64,6 +66,35 @@ export const renderCalorieEstimate = (est: CalorieEstimate): string => {
   return lines.join('\n');
 };
 
+const buildDataUrl = (base64Data: string, mimeType: string): string => {
+  if (base64Data.startsWith('data:')) {
+    return base64Data;
+  }
+  return `data:${mimeType};base64,${base64Data}`;
+};
+
+const resolveImageDataUrl = async (params: {
+  imagePath?: string;
+  base64Data?: string;
+  mimeType?: string;
+}): Promise<string | undefined> => {
+  const { imagePath, base64Data, mimeType } = params;
+
+  if (base64Data) {
+    const resolvedMime = mimeType ?? 'image/jpeg';
+    return buildDataUrl(base64Data, resolvedMime);
+  }
+
+  if (imagePath) {
+    const buffer = await readFile(imagePath);
+    const lookedUp = mime.lookup(imagePath);
+    const resolvedMime = typeof lookedUp === 'string' ? lookedUp : mimeType ?? 'image/jpeg';
+    return buildDataUrl(buffer.toString('base64'), resolvedMime);
+  }
+
+  return undefined;
+};
+
 export interface EstimatePlateCaloriesParams {
   imagePath?: string;
   base64Data?: string;
@@ -76,6 +107,7 @@ export const estimatePlateCalories = async (params: EstimatePlateCaloriesParams)
   const { imagePath, base64Data, mimeType, captionText, openRouterClient } = params;
   const instruction = buildCaloriePrompt(captionText);
   const system = 'You are a nutrition assistant. Output only JSON.';
-  const raw = await openRouterClient.describeImage({ imagePath, base64Data, mimeType, instruction, system, maxTokens: 600, temperature: 0.1 });
+  const imageUrl = await resolveImageDataUrl({ imagePath, base64Data, mimeType });
+  const raw = await openRouterClient.describeImage({ imageUrl, instruction, system, maxTokens: 600, temperature: 0.1 });
   return tryParseEstimate(raw);
 };

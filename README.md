@@ -5,7 +5,7 @@ A starter WhatsApp bot (written in TypeScript) that follows the [`whatsapp-web.j
 ## Features
 - [`LocalAuth`](https://wwebjs.dev/guide/creating-your-bot/authentication.html) login with QR display via `qrcode-terminal` and cached sessions under `.wwebjs_auth/`.
 - Attachment handling per the [official guide](https://wwebjs.dev/guide/creating-your-bot/handling-attachments.html); any incoming media is written to `downloads/` with a safe filename.
-- `!ask <prompt>` command that forwards text to OpenRouter and posts the completion back into the same chat.
+- `/ask <prompt>` command that forwards text to OpenRouter and posts the completion back into the same chat.
 - Automatic image captioning: inbound images are described via an OpenRouter vision model whenever API credentials are present.
 - Daily chat summaries: after the client becomes ready, the bot fetches the last 24 hours of messages for a configured JID, summarizes them with OpenRouter, and posts the digest back into the chat.
 - Bootstrap diagnostics: the bot discovers an installed Chrome/Chromium binary, validates Puppeteer end-to-end, lists your busiest chats, and seeds a configurable contact/group with test pings so you can confirm delivery.
@@ -20,7 +20,7 @@ A starter WhatsApp bot (written in TypeScript) that follows the [`whatsapp-web.j
    ```bash
    cp .env.example .env
    ```
-   - Set `OPENROUTER_API_KEY` (required for `!ask` and captioning).
+   - Set `OPENROUTER_API_KEY` (required for `/ask` and captioning).
    - Optionally override `OPENROUTER_TEXT_MODEL`, `OPENROUTER_VISION_MODEL`, `OPENROUTER_REFERER`, or `OPENROUTER_APP_TITLE` per the OpenRouter quickstart suggestions.
    - Set `INITIAL_NOTIFICATION_JID` to the contact/group that should receive startup test messages and the daily summary (defaults to your own number placeholder).
    - Set `DOWNLOADS_DIR` if you want media saved outside of `./downloads`.
@@ -32,7 +32,7 @@ A starter WhatsApp bot (written in TypeScript) that follows the [`whatsapp-web.j
 4. Scan the QR code shown in the terminal. Subsequent runs reuse the cached LocalAuth session.
 
 ## Commands & Flows
-- `!ask <prompt>` — sends the prompt through `OpenRouterClient.generateText` and replies with the generated answer.
+- `/ask <prompt>` — sends the prompt through `OpenRouterClient.generateText` and replies with the generated answer.
 - Attachment downloads — every media message is saved to `downloads/<safe-name>.<ext>`.
 - Image captioning — if the media mimetype starts with `image/` and OpenRouter creds exist, the file is captioned via `OpenRouterClient.describeImage`.
 - Ready hook — once the WhatsApp session is ready, the bot logs your recent chats, sends two diagnostic messages to `INITIAL_NOTIFICATION_JID`, and posts a 24 hour summary via `summarizeRecentChat`.
@@ -72,7 +72,7 @@ A starter WhatsApp bot (written in TypeScript) that follows the [`whatsapp-web.j
   - Sends the summary back to WhatsApp or emits a helpful warning if OpenRouter is disabled or the fetch fails.
 
 ## Extending the Demo
-- Add command handlers inside the `message` listener in `src/index.ts` (e.g., `!summarize`, custom menus, templated replies).
+- Add command handlers inside the `message` listener in `src/index.ts` (e.g., `/summary`, custom menus, templated replies).
 - Wire persistence (databases, vector stores) by updating the helper functions and injecting new services.
 - Experiment with different OpenRouter models by editing environment variables—no code changes required.
 
@@ -81,3 +81,45 @@ Helpful docs for quick reference:
 - [Authentication](https://wwebjs.dev/guide/creating-your-bot/authentication.html)
 - [Handling attachments](https://wwebjs.dev/guide/creating-your-bot/handling-attachments.html)
 - [OpenRouter quickstart](https://openrouter.ai/docs/quickstart)
+
+## Architecture (WhatsApp Bot + AI Modules)
+High-level flow from a WhatsApp chat to the AI-backed modules:
+
+```
+WhatsApp user
+   |
+   v
+whatsapp-web.js Client (src/index.ts)
+   |  parses commands + media
+   |-- /ask ----------> QnA prompt builder (src/qnaTemplate.ts)
+   |                     -> OpenRouterClient.generateText
+   |-- /science ------> Science brief prompt (src/scienceBrief.ts)
+   |                     -> OpenRouterClient.generateText
+   |-- /summary ------> Chat fetch + summarizer (src/chatSummary.ts)
+   |                     -> OpenRouterClient.generateText
+   |-- /calories + img -> Plate estimator (src/plateCalorieEstimator.ts)
+   |                     -> OpenRouterClient.describeImage
+   |-- plain image ---> OpenRouterClient.describeImage (caption)
+   v
+Replies sent back via client.sendMessage + emoji reactions
+```
+
+### Module responsibilities
+- `src/index.ts`: Boots Puppeteer and the WhatsApp client, registers event handlers, routes commands to the right module, persists inbound media to `downloads/`, and logs meal estimates to `data/`.
+- `src/openrouter.ts`: Lightweight OpenRouter client for text and vision models; exposes `isEnabled`, `generateText`, and `describeImage`.
+- `src/qnaTemplate.ts`: Builds a concise 2–4 sentence QnA prompt; `generateQnAResponse` is invoked by `/ask`.
+- `src/scienceBrief.ts`: Enforces evidence-focused markdown sections for `/science` topics; `generateScienceBrief` calls the text model.
+- `src/chatSummary.ts`: Fetches recent chat history (24h window by default), trims the transcript, and asks OpenRouter to produce a digest; used by `/summary`.
+- `src/plateCalorieEstimator.ts`: Converts images to data URLs, builds a JSON-only nutrition prompt, calls the vision model, parses the JSON, renders a human reply; triggered by `/calories` with an image.
+
+### Request lifecycle per command
+- `/ask <question>`: Validates OpenRouter availability → builds concise QnA prompt → `generateText` → replies with 2–4 sentence answer.
+- `/science <topic>`: Validates topic and OpenRouter → builds evidence/uncertainty/takeaways prompt → `generateText` → replies with markdown brief.
+- `/summary`: Pulls last N messages (50 by default, 24h lookback) → builds summary prompt → `generateText` → replies with digest.
+- `/calories <caption>` + image: Downloads media → saves to `downloads/` → builds calorie prompt + image data URL → `describeImage` (vision) → parses JSON → logs to `data/<jid>.json` → replies with calorie/macros range.
+- Image without command: Downloads media → if image and OpenRouter enabled → `describeImage` → replies with caption.
+
+### Data and storage touchpoints
+- Media: `downloads/` (configurable via `DOWNLOADS_DIR`) stores every inbound file with a safe filename.
+- Meal logs: `data/` (configurable via `DATA_DIR`) appends calorie estimation entries per JID.
+- Secrets: Environment variables for OpenRouter keys/models and optional Chrome path; LocalAuth session cache under `.wwebjs_auth/` (managed by whatsapp-web.js).

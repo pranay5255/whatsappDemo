@@ -22,7 +22,7 @@ import {
   Plus
 } from "lucide-react"
 import { Client, ClientCard } from "@/components/client-card"
-import { Sidebar } from "@/components/sidebar"
+import { MobileNav, Sidebar } from "@/components/sidebar"
 
 // Mock Data
 const MOCK_CLIENTS: Client[] = [
@@ -76,19 +76,32 @@ const MOCK_CLIENTS: Client[] = [
   }
 ]
 
+const CLIENT_TABS = [
+  { value: "intake", label: "Intake & Onboarding", shortLabel: "Intake", icon: ClipboardCheck },
+  { value: "safety", label: "Safety Guardrails", shortLabel: "Safety", icon: ShieldAlert },
+  { value: "chat", label: "Chat & Persona", shortLabel: "Chat", icon: MessageSquare },
+  { value: "rituals", label: "Daily Rituals", shortLabel: "Rituals", icon: SunMoon },
+  { value: "habits", label: "Habits & Streaks", shortLabel: "Habits", icon: Trophy },
+  { value: "nutrition", label: "Nutrition", shortLabel: "Nutrition", icon: Utensils },
+  { value: "training", label: "Training & Form", shortLabel: "Training", icon: Dumbbell },
+  { value: "education", label: "Education & Science", shortLabel: "Education", icon: BrainCircuit },
+]
+
 export default function AgentDashboard() {
   const [activeView, setActiveView] = useState("clients")
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [activeTab, setActiveTab] = useState("intake")
   const tabTriggerClasses =
-    "w-full items-start justify-start gap-3 rounded-md px-3 py-2.5 text-left text-slate-600 leading-snug hover:bg-slate-50 hover:text-slate-900 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 whitespace-normal"
+    "w-full items-center justify-start gap-2 rounded-md px-3 py-2 text-left text-xs font-medium text-slate-600 leading-snug whitespace-normal hover:bg-slate-50 hover:text-slate-900 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 sm:text-sm md:items-start md:gap-3"
+  const mobileTabTriggerClasses =
+    "flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] font-medium text-slate-500 transition-colors data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"
 
   const renderContent = () => {
     if (activeView === "billing") {
       return (
         <div className="max-w-4xl mx-auto space-y-8">
-          <header>
-            <h1 className="text-3xl font-bold text-slate-900">Billing & Plans</h1>
+          <header className="space-y-1">
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Billing & Plans</h1>
             <p className="text-slate-500">Manage your subscription and client billing</p>
           </header>
           <Card>
@@ -129,8 +142,8 @@ export default function AgentDashboard() {
     if (activeView === "support") {
       return (
         <div className="max-w-4xl mx-auto space-y-8">
-          <header>
-            <h1 className="text-3xl font-bold text-slate-900">Support</h1>
+          <header className="space-y-1">
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Support</h1>
             <p className="text-slate-500">Get help with your dashboard</p>
           </header>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,12 +193,12 @@ export default function AgentDashboard() {
     if (!selectedClient) {
       return (
         <div className="max-w-6xl mx-auto space-y-8">
-          <header className="flex justify-between items-center">
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Client Management</h1>
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Client Management</h1>
               <p className="text-slate-500">Manage client programs and AI configurations</p>
             </div>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Add New Client
             </Button>
@@ -206,17 +219,17 @@ export default function AgentDashboard() {
 
     return (
       <div className="max-w-6xl mx-auto space-y-8">
-        <header className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)}>
               <ArrowLeft className="h-6 w-6" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">{selectedClient.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{selectedClient.name}</h1>
               <p className="text-slate-500">Agent Configuration • {selectedClient.program}</p>
             </div>
           </div>
-          <Button>
+          <Button className="w-full sm:w-auto">
             <Save className="mr-2 h-4 w-4" />
             Save Changes
           </Button>
@@ -228,66 +241,16 @@ export default function AgentDashboard() {
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_minmax(0,1fr)]">
-            <Card className="h-fit">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
+            <Card className="hidden h-fit md:block">
               <CardContent className="p-4">
                 <TabsList className="flex h-auto w-full flex-col items-stretch justify-start gap-1 bg-transparent p-0">
-                  <TabsTrigger
-                    value="intake"
-                    className={tabTriggerClasses}
-                  >
-                    <ClipboardCheck className="h-4 w-4" />
-                    Intake & Onboarding
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="safety"
-                    className={tabTriggerClasses}
-                  >
-                    <ShieldAlert className="h-4 w-4" />
-                    Safety Guardrails
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="chat"
-                    className={tabTriggerClasses}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Chat & Persona
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="rituals"
-                    className={tabTriggerClasses}
-                  >
-                    <SunMoon className="h-4 w-4" />
-                    Daily Rituals
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="habits"
-                    className={tabTriggerClasses}
-                  >
-                    <Trophy className="h-4 w-4" />
-                    Habits & Streaks
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="nutrition"
-                    className={tabTriggerClasses}
-                  >
-                    <Utensils className="h-4 w-4" />
-                    Nutrition
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="training"
-                    className={tabTriggerClasses}
-                  >
-                    <Dumbbell className="h-4 w-4" />
-                    Training & Form
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="education"
-                    className={tabTriggerClasses}
-                  >
-                    <BrainCircuit className="h-4 w-4" />
-                    Education & Science
-                  </TabsTrigger>
+                  {CLIENT_TABS.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className={tabTriggerClasses}>
+                      <tab.icon className="h-4 w-4" />
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </CardContent>
             </Card>
@@ -311,7 +274,7 @@ export default function AgentDashboard() {
                     
                     <div className="space-y-2">
                       <Label>Required Data Points</Label>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="flex items-center space-x-2">
                           <Switch id="req-goals" defaultChecked />
                           <Label htmlFor="req-goals">Fitness Goals</Label>
@@ -377,7 +340,7 @@ export default function AgentDashboard() {
                     <CardDescription>Customize the voice and tone of your AI clone.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Tone</Label>
                         <Input defaultValue="Encouraging but firm" />
@@ -422,10 +385,10 @@ export default function AgentDashboard() {
                         <Label className="text-xs">Time</Label>
                         <Input type="time" defaultValue="07:00" className="w-32" />
                         <Label className="text-xs">Metrics to Track</Label>
-                        <div className="grid grid-cols-3 gap-2 text-sm">
-                          <label className="flex items-center gap-2"><input type="checkbox" checked /> Sleep</label>
-                          <label className="flex items-center gap-2"><input type="checkbox" checked /> Soreness</label>
-                          <label className="flex items-center gap-2"><input type="checkbox" checked /> Mood</label>
+                        <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                          <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Sleep</label>
+                          <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Soreness</label>
+                          <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Mood</label>
                         </div>
                       </div>
                     </div>
@@ -456,7 +419,7 @@ export default function AgentDashboard() {
                   <CardContent className="space-y-6">
                     <div className="space-y-4">
                       <Label>Active Trackers</Label>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="flex items-center justify-between border p-3 rounded-lg">
                           <Label>Step Count</Label>
                           <Switch defaultChecked />
@@ -540,7 +503,7 @@ export default function AgentDashboard() {
                   <CardContent className="space-y-6">
                     <div className="space-y-4">
                       <Label>Program Generation Style</Label>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                           <Label className="text-xs">Split Preference</Label>
                           <Input defaultValue="Upper/Lower Split" />
@@ -617,20 +580,54 @@ export default function AgentDashboard() {
               </TabsContent>
             </div>
           </div>
+          <div className="md:hidden">
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white">
+              <div className="mx-auto max-w-6xl px-4 py-3">
+                <TabsList className="flex h-auto w-full justify-start gap-2 overflow-x-auto rounded-none bg-transparent p-0">
+                  {CLIENT_TABS.map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className={mobileTabTriggerClasses}
+                    >
+                      <tab.icon className="h-4 w-4" />
+                      {tab.shortLabel}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+            </div>
+          </div>
         </Tabs>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar activeView={activeView} onViewChange={(view) => {
-        setActiveView(view)
-        setSelectedClient(null)
-      }} />
-      <main className="min-w-0 flex-1 p-8">
-        {renderContent()}
-      </main>
+    <div className="min-h-screen bg-slate-50 md:flex">
+      <Sidebar
+        activeView={activeView}
+        onViewChange={(view) => {
+          setActiveView(view)
+          setSelectedClient(null)
+        }}
+      />
+      <div className="flex min-h-screen flex-1 flex-col">
+        <MobileNav
+          activeView={activeView}
+          onViewChange={(view) => {
+            setActiveView(view)
+            setSelectedClient(null)
+          }}
+        />
+        <main
+          className={`min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 ${
+            selectedClient ? "pb-24 sm:pb-6" : ""
+          }`}
+        >
+          {renderContent()}
+        </main>
+      </div>
     </div>
   )
 }

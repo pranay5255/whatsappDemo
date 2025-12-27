@@ -204,10 +204,12 @@ async function handleSummaryCommand(message: Message): Promise<void> {
 
   try {
     await message.react('📝');
+    const chat = await message.getChat();
     await summarizeRecentChat({
       client,
       openRouterClient,
-      jid: message.from,
+      jid: chat.id?._serialized ?? message.from,
+      chat,
     });
     await message.react('✅');
   } catch (error) {

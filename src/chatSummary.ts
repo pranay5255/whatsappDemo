@@ -1,4 +1,4 @@
-import type { Client, Message } from 'whatsapp-web.js';
+import type { Chat, Client, Message } from 'whatsapp-web.js';
 
 import type { OpenRouterClient } from './openrouter';
 import { SUMMARY_PROMPT_TEMPLATE, SUMMARY_SYSTEM_PROMPT } from './modulePrompt';
@@ -7,8 +7,10 @@ interface SummarizeChatOptions {
   client: Client;
   openRouterClient: OpenRouterClient;
   jid: string;
+  chat?: Chat;
   lookbackMs?: number;
   maxMessages?: number;
+  summaryPreference?: string;
 }
 
 const DEFAULT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -19,17 +21,21 @@ export const summarizeRecentChat = async ({
   client,
   openRouterClient,
   jid,
+  chat,
   lookbackMs = DEFAULT_LOOKBACK_MS,
   maxMessages = DEFAULT_MAX_MESSAGES,
+  summaryPreference,
 }: SummarizeChatOptions): Promise<void> => {
   if (!openRouterClient.isEnabled()) {
     console.warn('⚠️  OpenRouter client disabled. Skipping chat summary.');
     return;
   }
 
+  const targetJid = chat?.id?._serialized ?? jid;
+
   try {
-    const chat = await client.getChatById(jid);
-    const messages = await chat.fetchMessages({ limit: maxMessages });
+    const chatWithHistory = chat ?? (await client.getChatById(targetJid));
+    const messages = await chatWithHistory.fetchMessages({ limit: maxMessages });
     const cutoff = Date.now() - lookbackMs;
 
     const recentMessages = messages
@@ -37,21 +43,21 @@ export const summarizeRecentChat = async ({
       .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
 
     if (!recentMessages.length) {
-      await client.sendMessage(jid, 'ℹ️ No messages from the last 24 hours to summarize.');
+      await client.sendMessage(targetJid, 'ℹ️ No messages from the last 24 hours to summarize.');
       return;
     }
 
     const transcript = buildTranscript(recentMessages);
-    const prompt = buildSummaryPrompt(transcript);
+    const prompt = buildSummaryPrompt(transcript, summaryPreference);
     const summary = await openRouterClient.generateText(prompt, SUMMARY_SYSTEM_PROMPT);
 
     await client.sendMessage(
-      jid,
+      targetJid,
       `📝 *Last 24h Summary*\n${summary.trim()}`,
     );
   } catch (error) {
-    console.error(`❌ Failed to summarize chat ${jid}:`, error);
-    await client.sendMessage(jid, '⚠️ Unable to generate the chat summary right now. Please try again later.');
+    console.error(`❌ Failed to summarize chat ${targetJid}:`, error);
+    await client.sendMessage(targetJid, '⚠️ Unable to generate the chat summary right now. Please try again later.');
   }
 };
 
@@ -94,6 +100,7 @@ const resolveMessageBody = (message: Message): string => {
 
 const sanitizeWhitespace = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
-const buildSummaryPrompt = (transcript: string): string => {
-  return SUMMARY_PROMPT_TEMPLATE.replace('{{TRANSCRIPT}}', transcript);
-};
+const buildSummaryPrompt = (transcript: string, summaryPreference?: string): string =>
+  SUMMARY_PROMPT_TEMPLATE
+    .replace('{{SUMMARY_PREF}}', summaryPreference?.trim() || 'not provided')
+    .replace('{{CONTEXT_BLOCK}}', transcript);

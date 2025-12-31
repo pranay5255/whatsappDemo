@@ -1,5 +1,42 @@
 # FalseGrip Coach — Expo App Implementation Plan
 
+## Plan Scaffold (fill in)
+
+### Goal
+- 
+
+### Success Criteria
+- 
+
+### Scope
+- In scope:
+- Out of scope:
+
+### Assumptions
+- 
+
+### Milestones
+1. 
+2. 
+
+### Work Breakdown
+- [ ] Setup:
+- [ ] Core logic:
+- [ ] UI:
+- [ ] Testing/QA:
+- [ ] Release:
+
+### Risks
+- 
+
+### Open Questions
+- 
+
+### Validation
+- 
+
+---
+
 ## Overview
 
 Build a mobile-first fitness coaching chatbot using Expo/React Native. This is a port of an existing WhatsApp bot (TypeScript) to a standalone mobile app.
